@@ -1,0 +1,33 @@
+plugins {
+	id 'java'
+  	id "au.com.dius.pact" version "4.6.16"
+	id 'com.github.davidmc24.gradle.plugin.avro' version '1.5.0'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+java {
+	sourceCompatibility = '17'
+}
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+  compileOnly {
+    extendsFrom annotationProcessor
+  }
+}
+
+dependencies {
+	implementation 'org.apache.avro:avro:1.12.0'
+
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+	testImplementation 'au.com.dius.pact.consumer:junit5:4.6.16'
+	testImplementation 'au.com.dius.pact.provider:junit5:4.6.16'
+}
+
+test {
+	useJUnitPlatform()
+}
