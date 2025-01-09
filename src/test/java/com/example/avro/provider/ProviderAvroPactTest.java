@@ -1,6 +1,8 @@
 package com.example.avro.provider;
 
-import au.com.dius.pact.core.model.ContentTypeHint;
+import au.com.dius.pact.core.model.*;
+import au.com.dius.pact.core.support.Result;
+import au.com.dius.pact.core.support.json.JsonValue;
 import au.com.dius.pact.provider.MessageAndMetadata;
 import au.com.dius.pact.provider.PactVerifyProvider;
 import au.com.dius.pact.provider.junit5.MessageTestTarget;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 @Provider("sample-avro-provider")
@@ -42,6 +45,26 @@ public class ProviderAvroPactTest {
     @BeforeEach
     void setupTest(PactVerificationContext context) {
         context.setTarget(new MessageTestTarget());
+        Result<V4Pact, String> pact = context.getPact().asV4Pact();
+
+        Map<String, Map<String, String>> newAvroPluginData = new HashMap<>();
+        for (Interaction interaction : pact.unwrap().getInteractions()) {
+            Map<String, Map<String, JsonValue>> pluginConfiguration = interaction.asV4Interaction().getPluginConfiguration();
+            if (pluginConfiguration.containsKey("avro")) {
+                Map<String, JsonValue> avroPluginConfiguration = pluginConfiguration.get("avro");
+                String schemaKey = avroPluginConfiguration.get("schemaKey").toString();
+                String schemaValue = avroPluginConfiguration.get("schemaValue").toString();
+                newAvroPluginData.put(schemaKey, Map.of("avroSchema", schemaValue));
+            }
+        }
+
+        for (PluginData pluginData : pact.unwrap().pluginData()) {
+            if ("avro".equalsIgnoreCase(pluginData.getName())) {
+                for (var entry : newAvroPluginData.entrySet()) {
+                    pluginData.getConfiguration().put(entry.getKey(), entry.getValue());
+                }
+            }
+        }
     }
 
     @PactVerifyProvider("Order Created")

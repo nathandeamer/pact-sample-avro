@@ -8,12 +8,13 @@ import au.com.dius.pact.core.model.PactSpecVersion;
 import au.com.dius.pact.core.model.V4Interaction;
 import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
+import au.com.dius.pact.core.support.json.JsonValue;
+import com.example.avro.Customer;
+import com.example.avro.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.File;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,7 +32,7 @@ public class ConsumerAvroPactTest {
 
     @Pact(consumer = "sample-avro-consumer")
     V4Pact customerConfigureRecordWithDependantRecord(PactBuilder builder) {
-        return builder
+        V4Pact pact = builder
                 .usingPlugin("avro")
                 .expectsToReceive("Customer Created", "core/interaction/message")
                 .with(
@@ -47,6 +48,8 @@ public class ConsumerAvroPactTest {
                                         Map.entry("email", "notEmpty('test@example.com')")
                                 )))
                 .toPact();
+
+        return updateAvroPluginConfiguration(pact, Customer.SCHEMA$.toString());
     }
 
     @Test
@@ -57,7 +60,7 @@ public class ConsumerAvroPactTest {
 
     @Pact(consumer = "sample-avro-consumer")
     V4Pact orderConfigureRecordWithDependantRecord(PactBuilder builder) {
-        return builder
+        V4Pact pact = builder
                 .usingPlugin("avro")
                 .expectsToReceive("Order Created", "core/interaction/message")
                 .with(
@@ -70,12 +73,24 @@ public class ConsumerAvroPactTest {
                                         Map.entry("id", "notEmpty('100')"),
                                         Map.entry("status", "matching(equalTo, 'CREATED')"))))
                 .toPact();
+
+        return updateAvroPluginConfiguration(pact, Order.SCHEMA$.toString());
     }
 
     @Test
     @PactTestFor(pactMethod = "orderConfigureRecordWithDependantRecord")
     void orderConsumerRecordWithDependantRecord(V4Interaction.AsynchronousMessage message) {
         assertTrue(true);
+    }
+
+    private V4Pact updateAvroPluginConfiguration(V4Pact pact, String schemaAsString) {
+        pact.getInteractions().forEach(interaction -> {
+            Map<String, Map<String, JsonValue>> pluginCongifuration = interaction.asV4Interaction().getPluginConfiguration();
+            if (pluginCongifuration.containsKey("avro")) {
+                pluginCongifuration.get("avro").put("schemaValue", new JsonValue.StringValue(schemaAsString));
+            }
+        });
+        return pact;
     }
 
 }
