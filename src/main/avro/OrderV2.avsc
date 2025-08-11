@@ -1,0 +1,25 @@
+{
+  "namespace": "com.example.avro",
+  "type": "record",
+  "name": "OrderV2",
+  "fields": [
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "Status",
+        "symbols": [
+          "CREATED",
+          "UPDATED",
+          "DELETED"
+        ],
+        "default": "CREATED"
+      }
+    },
+    {
+      "name": "name",
+      "type": ["null", "string"],
+      "default": null
+    }
+  ]
+}

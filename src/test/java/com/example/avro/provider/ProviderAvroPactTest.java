@@ -1,8 +1,6 @@
 package com.example.avro.provider;
 
 import au.com.dius.pact.core.model.*;
-import au.com.dius.pact.core.support.Result;
-import au.com.dius.pact.core.support.json.JsonValue;
 import au.com.dius.pact.provider.MessageAndMetadata;
 import au.com.dius.pact.provider.PactVerifyProvider;
 import au.com.dius.pact.provider.junit5.MessageTestTarget;
@@ -10,8 +8,8 @@ import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
-import com.example.avro.Customer;
 import com.example.avro.Order;
+import com.example.avro.OrderV2;
 import com.example.avro.Status;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
@@ -22,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 @Provider("sample-avro-provider")
@@ -30,7 +27,6 @@ import java.util.Map;
 public class ProviderAvroPactTest {
 
     private static final String ORDER_AVRO_CONTENT_TYPE = "avro/binary; record=Order";
-    private static final String CUSTOMER_ORDER_AVRO_CONTENT_TYPE = "avro/binary; record=Customer";
     private static final String KEY_CONTENT_TYPE = "contentType";
     private static final String KEY_CONTENT_TYPE_HINT = "contentTypeHint";
     private static final ContentTypeHint CONTENT_TYPE_HINT = ContentTypeHint.BINARY;
@@ -45,31 +41,11 @@ public class ProviderAvroPactTest {
     @BeforeEach
     void setupTest(PactVerificationContext context) {
         context.setTarget(new MessageTestTarget());
-        Result<V4Pact, String> pact = context.getPact().asV4Pact();
-
-        Map<String, Map<String, String>> newAvroPluginData = new HashMap<>();
-        for (Interaction interaction : pact.unwrap().getInteractions()) {
-            Map<String, Map<String, JsonValue>> pluginConfiguration = interaction.asV4Interaction().getPluginConfiguration();
-            if (pluginConfiguration.containsKey("avro")) {
-                Map<String, JsonValue> avroPluginConfiguration = pluginConfiguration.get("avro");
-                String schemaKey = avroPluginConfiguration.get("schemaKey").toString();
-                String schemaValue = avroPluginConfiguration.get("schemaValue").toString();
-                newAvroPluginData.put(schemaKey, Map.of("avroSchema", schemaValue));
-            }
-        }
-
-        for (PluginData pluginData : pact.unwrap().pluginData()) {
-            if ("avro".equalsIgnoreCase(pluginData.getName())) {
-                for (var entry : newAvroPluginData.entrySet()) {
-                    pluginData.getConfiguration().put(entry.getKey(), entry.getValue());
-                }
-            }
-        }
     }
 
     @PactVerifyProvider("Order Created")
     public MessageAndMetadata orderCreatedEvent() throws IOException {
-        Order order = new Order(100L, Status.CREATED);
+        OrderV2 order = new OrderV2(Status.CREATED, "nathan");
 
         return new MessageAndMetadata(
                 serialise(order),
@@ -78,19 +54,8 @@ public class ProviderAvroPactTest {
                         KEY_CONTENT_TYPE_HINT, CONTENT_TYPE_HINT));
     }
 
-    @PactVerifyProvider("Customer Created")
-    public MessageAndMetadata customerCreatedEvent() throws IOException {
-        Customer customer = new Customer(1L, "Harry", "Potter", "harry.potter@hogwarts.com");
-
-        return new MessageAndMetadata(
-                serialise(customer),
-                Map.of(
-                        KEY_CONTENT_TYPE, CUSTOMER_ORDER_AVRO_CONTENT_TYPE,
-                        KEY_CONTENT_TYPE_HINT, CONTENT_TYPE_HINT));
-    }
-
-    private byte[] serialise(Order record) throws IOException {
-        SpecificDatumWriter<Order> writer = new SpecificDatumWriter<>(Order.class);
+    private byte[] serialise(OrderV2 record) throws IOException {
+        SpecificDatumWriter<OrderV2> writer = new SpecificDatumWriter<>(OrderV2.class);
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
             writer.write(record, encoder);
@@ -99,13 +64,4 @@ public class ProviderAvroPactTest {
         }
     }
 
-    private byte[] serialise(Customer record) throws IOException {
-        SpecificDatumWriter<Customer> writer = new SpecificDatumWriter<>(Customer.class);
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);
-            writer.write(record, encoder);
-            encoder.flush();
-            return outputStream.toByteArray();
-        }
-    }
 }
